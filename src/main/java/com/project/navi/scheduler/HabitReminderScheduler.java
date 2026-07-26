@@ -9,6 +9,7 @@ import com.project.navi.quote.Quote;
 import com.project.navi.repository.HabitReminderMessageRepository;
 import com.project.navi.repository.HabitRepository;
 import com.project.navi.repository.UserRepository;
+import com.project.navi.telegram.TelegramMessagePinner;
 import com.project.navi.telegram.TelegramReplySender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,6 +31,7 @@ public class HabitReminderScheduler {
     private final MotivationalQuoteProvider motivationalQuoteProvider;
     private final HabitReminderMessageFormatter messageFormatter;
     private final TelegramReplySender telegramReplySender;
+    private final TelegramMessagePinner telegramMessagePinner;
     private final Clock clock;
     private final String groupChatId;
 
@@ -40,6 +42,7 @@ public class HabitReminderScheduler {
                                    MotivationalQuoteProvider motivationalQuoteProvider,
                                    HabitReminderMessageFormatter messageFormatter,
                                    TelegramReplySender telegramReplySender,
+                                   TelegramMessagePinner telegramMessagePinner,
                                    Clock clock,
                                    @Value("${TELEGRAM_GROUP_CHAT_ID:}") String groupChatId) {
         this.habitRepository = habitRepository;
@@ -49,6 +52,7 @@ public class HabitReminderScheduler {
         this.motivationalQuoteProvider = motivationalQuoteProvider;
         this.messageFormatter = messageFormatter;
         this.telegramReplySender = telegramReplySender;
+        this.telegramMessagePinner = telegramMessagePinner;
         this.clock = clock;
         this.groupChatId = groupChatId;
     }
@@ -60,13 +64,20 @@ public class HabitReminderScheduler {
         }
 
         LocalDate today = LocalDate.now(clock);
+
+        habitReminderMessageRepository.findByReferenceDate(today.minusDays(1))
+                .forEach(reminder -> telegramMessagePinner.unpin(chatId(), reminder.getTelegramMessageId().intValue()));
+
         for (Habit habit : habitRepository.findAll()) {
             telegramReplySender.reply(chatId(), null, messageFormatter.morningReminder(habit))
-                    .ifPresent(messageId -> habitReminderMessageRepository.save(HabitReminderMessage.builder()
-                            .habit(habit)
-                            .telegramMessageId(messageId.longValue())
-                            .referenceDate(today)
-                            .build()));
+                    .ifPresent(messageId -> {
+                        habitReminderMessageRepository.save(HabitReminderMessage.builder()
+                                .habit(habit)
+                                .telegramMessageId(messageId.longValue())
+                                .referenceDate(today)
+                                .build());
+                        telegramMessagePinner.pin(chatId(), messageId);
+                    });
         }
     }
 

@@ -11,6 +11,7 @@ import com.project.navi.quote.Quote;
 import com.project.navi.repository.HabitRepository;
 import com.project.navi.repository.HabitReminderMessageRepository;
 import com.project.navi.repository.UserRepository;
+import com.project.navi.telegram.TelegramMessagePinner;
 import com.project.navi.telegram.TelegramReplySender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +55,9 @@ class HabitReminderSchedulerTest {
     @Mock
     private TelegramReplySender telegramReplySender;
 
+    @Mock
+    private TelegramMessagePinner telegramMessagePinner;
+
     private final HabitReminderMessageFormatter formatter = new HabitReminderMessageFormatter();
 
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
@@ -65,12 +69,14 @@ class HabitReminderSchedulerTest {
 
     private HabitReminderScheduler scheduler(String groupChatId) {
         return new HabitReminderScheduler(habitRepository, userRepository, habitReminderMessageRepository,
-                habitProgressCalculator, motivationalQuoteProvider, formatter, telegramReplySender, clock, groupChatId);
+                habitProgressCalculator, motivationalQuoteProvider, formatter, telegramReplySender,
+                telegramMessagePinner, clock, groupChatId);
     }
 
     @Test
-    void sendsOneMorningReminderPerHabitAndPersistsReminderMessage() {
+    void sendsOneMorningReminderPerHabitPersistsAndPinsIt() {
         when(habitRepository.findAll()).thenReturn(List.of(water, study));
+        when(habitReminderMessageRepository.findByReferenceDate(LocalDate.of(2026, 7, 26))).thenReturn(List.of());
         when(telegramReplySender.reply(eq(999L), eq(null), any())).thenReturn(Optional.of(501), Optional.of(502));
 
         scheduler("999").sendMorningReminders();
@@ -84,16 +90,34 @@ class HabitReminderSchedulerTest {
         assertThat(saved).extracting(HabitReminderMessage::getTelegramMessageId).containsExactly(501L, 502L);
         assertThat(saved).extracting(m -> m.getHabit().getId()).containsExactly(1L, 2L);
         assertThat(saved).allSatisfy(m -> assertThat(m.getReferenceDate()).isEqualTo(LocalDate.of(2026, 7, 27)));
+
+        verify(telegramMessagePinner).pin(999L, 501);
+        verify(telegramMessagePinner).pin(999L, 502);
     }
 
     @Test
-    void doesNotSaveReminderMessageWhenSendFails() {
+    void unpinsYesterdaysRemindersBeforeSendingNewOnes() {
+        HabitReminderMessage yesterdayReminder = HabitReminderMessage.builder()
+                .habit(water).telegramMessageId(400L).referenceDate(LocalDate.of(2026, 7, 26)).build();
+        when(habitReminderMessageRepository.findByReferenceDate(LocalDate.of(2026, 7, 26)))
+                .thenReturn(List.of(yesterdayReminder));
+        when(habitRepository.findAll()).thenReturn(List.of());
+
+        scheduler("999").sendMorningReminders();
+
+        verify(telegramMessagePinner).unpin(999L, 400);
+    }
+
+    @Test
+    void doesNotSaveOrPinReminderMessageWhenSendFails() {
         when(habitRepository.findAll()).thenReturn(List.of(water));
+        when(habitReminderMessageRepository.findByReferenceDate(any())).thenReturn(List.of());
         when(telegramReplySender.reply(eq(999L), eq(null), any())).thenReturn(Optional.empty());
 
         scheduler("999").sendMorningReminders();
 
         verify(habitReminderMessageRepository, never()).save(any());
+        verify(telegramMessagePinner, never()).pin(any(), any());
     }
 
     @Test
@@ -102,6 +126,8 @@ class HabitReminderSchedulerTest {
 
         verify(habitRepository, never()).findAll();
         verify(telegramReplySender, never()).reply(anyLong(), any(), any());
+        verify(telegramMessagePinner, never()).pin(any(), any());
+        verify(telegramMessagePinner, never()).unpin(any(), any());
     }
 
     @Test
