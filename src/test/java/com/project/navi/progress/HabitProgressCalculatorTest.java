@@ -24,7 +24,7 @@ class HabitProgressCalculatorTest {
 
     private final User user = User.builder().id(1L).telegramUserId(42L).name("Lucas").build();
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
-    private final Habit goodFood = Habit.builder().id(4L).name("Alimentação boa").type(HabitType.BINARY).build();
+    private final Habit goodFood = Habit.builder().id(4L).name("Alimentação saudável").type(HabitType.BINARY).build();
     private final LocalDate today = LocalDate.of(2026, 7, 27);
 
     private HabitProgressCalculator calculator() {

@@ -3,6 +3,7 @@ package com.project.navi.scheduler;
 import com.project.navi.domain.Habit;
 import com.project.navi.domain.HabitReminderMessage;
 import com.project.navi.domain.User;
+import com.project.navi.progress.HabitProgress;
 import com.project.navi.progress.HabitProgressCalculator;
 import com.project.navi.quote.MotivationalQuoteProvider;
 import com.project.navi.quote.Quote;
@@ -92,11 +93,12 @@ public class HabitReminderScheduler {
 
         List<UserPendingHabits> pending = new ArrayList<>();
         for (User user : userRepository.findAll()) {
-            List<Habit> pendingHabits = habits.stream()
-                    .filter(habit -> !habitProgressCalculator.calculate(user, habit, today).isCompleted())
+            List<HabitProgress> pendingProgress = habits.stream()
+                    .map(habit -> habitProgressCalculator.calculate(user, habit, today))
+                    .filter(progress -> !progress.isCompleted())
                     .toList();
-            if (!pendingHabits.isEmpty()) {
-                pending.add(new UserPendingHabits(user, pendingHabits));
+            if (!pendingProgress.isEmpty()) {
+                pending.add(new UserPendingHabits(user, pendingProgress));
             }
         }
 

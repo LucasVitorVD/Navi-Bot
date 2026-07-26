@@ -14,13 +14,13 @@ class HabitRecordConfirmationMessageFormatterTest {
     private final User lucas = User.builder().id(1L).name("Lucas").build();
     private final Habit water = Habit.builder().name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
     private final Habit study = Habit.builder().name("Estudo").type(HabitType.CUMULATIVE).unit("min").target(180).build();
-    private final Habit goodFood = Habit.builder().name("Alimentação boa").type(HabitType.BINARY).build();
+    private final Habit goodFood = Habit.builder().name("Alimentação saudável").type(HabitType.BINARY).build();
 
     @Test
     void congratulatesByNameForBinaryHabitWithoutRemainingInfo() {
         String message = formatter.confirmationFor(lucas, goodFood, null, 0);
 
-        assertThat(message).contains("Lucas").contains("Alimentação boa");
+        assertThat(message).contains("Lucas").contains("Alimentação saudável");
         assertThat(message).doesNotContain("Faltam");
     }
 

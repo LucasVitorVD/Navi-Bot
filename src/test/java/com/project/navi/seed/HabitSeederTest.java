@@ -32,7 +32,7 @@ class HabitSeederTest {
                         tuple("Água", HabitType.CUMULATIVE, "ml", 3000),
                         tuple("Estudo", HabitType.CUMULATIVE, "min", 180),
                         tuple("Cardio", HabitType.CUMULATIVE, "min", 30),
-                        tuple("Alimentação boa", HabitType.BINARY, null, null)
+                        tuple("Alimentação saudável", HabitType.BINARY, null, null)
                 );
     }
 

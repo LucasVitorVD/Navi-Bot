@@ -18,7 +18,7 @@ class HabitReminderMessageFormatterTest {
 
     private final Habit water = Habit.builder().name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
     private final Habit study = Habit.builder().name("Estudo").type(HabitType.CUMULATIVE).unit("min").target(180).build();
-    private final Habit goodFood = Habit.builder().name("Alimentação boa").type(HabitType.BINARY).build();
+    private final Habit goodFood = Habit.builder().name("Alimentação saudável").type(HabitType.BINARY).build();
 
     private final User lucas = User.builder().id(1L).name("Lucas").build();
     private final User ana = User.builder().id(2L).name("Ana").build();
@@ -40,11 +40,27 @@ class HabitReminderMessageFormatterTest {
     @Test
     void reinforcementReminderListsPendingHabitsPerUser() {
         String message = formatter.reinforcementReminder(List.of(
-                new UserPendingHabits(lucas, List.of(water, study)),
-                new UserPendingHabits(ana, List.of(study))));
+                new UserPendingHabits(lucas, List.of(new HabitProgress(water, 40), new HabitProgress(study, 0))),
+                new UserPendingHabits(ana, List.of(new HabitProgress(study, 75)))));
 
         assertThat(message).contains("Lucas").contains("Água").contains("Estudo");
         assertThat(message).contains("Ana");
+    }
+
+    @Test
+    void reinforcementReminderShowsProgressForPendingHabits() {
+        String message = formatter.reinforcementReminder(List.of(
+                new UserPendingHabits(lucas, List.of(new HabitProgress(water, 40)))));
+
+        assertThat(message).contains("40%");
+    }
+
+    @Test
+    void reinforcementReminderShowsCrossForPendingBinaryHabit() {
+        String message = formatter.reinforcementReminder(List.of(
+                new UserPendingHabits(lucas, List.of(new HabitProgress(goodFood, 0)))));
+
+        assertThat(message).contains("❌");
     }
 
     @Test

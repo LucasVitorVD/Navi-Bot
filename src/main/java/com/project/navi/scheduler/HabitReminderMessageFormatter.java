@@ -18,7 +18,7 @@ public class HabitReminderMessageFormatter {
             "Água", "💧",
             "Estudo", "📚",
             "Cardio", "🏃",
-            "Alimentação boa", "🥗"
+            "Alimentação saudável", "🥗"
     );
 
     public String morningReminder(Habit habit) {
@@ -30,7 +30,7 @@ public class HabitReminderMessageFormatter {
                     + "min. Responda com foto + quanto tempo você estudou 🧠";
             case "Cardio" -> emoji + " Cardio chamando! Meta de hoje: " + habit.getTarget()
                     + "min. Foto + tempo aqui na resposta 🔥";
-            case "Alimentação boa" -> emoji + " Comeu bem hoje? Responda esta mensagem com uma foto"
+            case "Alimentação saudável" -> emoji + " Comeu bem hoje? Responda esta mensagem com uma foto"
                     + " quando rolar uma refeição boa 🍽️";
             default -> emoji + " " + habit.getName() + " — bora lá! Responda esta mensagem com uma foto.";
         };
@@ -44,7 +44,7 @@ public class HabitReminderMessageFormatter {
         StringBuilder message = new StringBuilder("⏰ Reforço da tarde! Ainda dá tempo:\n\n");
         for (UserPendingHabits entry : pendingByUser) {
             String habits = entry.pendingHabits().stream()
-                    .map(habit -> emojiFor(habit) + " " + habit.getName())
+                    .map(progress -> progress.habit().getName() + " " + formatProgress(progress))
                     .collect(Collectors.joining(", "));
             message.append("👤 ").append(entry.user().getName()).append(": ").append(habits).append("\n");
         }

@@ -39,7 +39,7 @@ class HabitRepositoryTest {
     @Test
     void savesBinaryHabitWithoutUnitOrTarget() {
         Habit habit = Habit.builder()
-                .name("Alimentação boa")
+                .name("Alimentação saudável")
                 .type(HabitType.BINARY)
                 .build();
 

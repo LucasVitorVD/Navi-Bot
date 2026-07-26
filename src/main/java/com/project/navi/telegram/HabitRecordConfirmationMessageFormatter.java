@@ -14,7 +14,7 @@ public class HabitRecordConfirmationMessageFormatter {
             "Água", "💧",
             "Estudo", "📚",
             "Cardio", "🏃",
-            "Alimentação boa", "🥗"
+            "Alimentação saudável", "🥗"
     );
 
     public String confirmationFor(User user, Habit habit, Integer quantityJustAdded, int remaining) {

@@ -32,7 +32,7 @@ public class HabitSeeder implements ApplicationRunner {
                 Habit.builder().name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build(),
                 Habit.builder().name("Estudo").type(HabitType.CUMULATIVE).unit("min").target(180).build(),
                 Habit.builder().name("Cardio").type(HabitType.CUMULATIVE).unit("min").target(30).build(),
-                Habit.builder().name("Alimentação boa").type(HabitType.BINARY).build()
+                Habit.builder().name("Alimentação saudável").type(HabitType.BINARY).build()
         ));
     }
 }

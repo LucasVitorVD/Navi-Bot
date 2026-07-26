@@ -55,7 +55,7 @@ class HabitRegistrationServiceTest {
             org.telegram.telegrambots.meta.api.objects.User.builder().id(42L).firstName("Lucas").isBot(false).build();
 
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
-    private final Habit goodFood = Habit.builder().id(4L).name("Alimentação boa").type(HabitType.BINARY).build();
+    private final Habit goodFood = Habit.builder().id(4L).name("Alimentação saudável").type(HabitType.BINARY).build();
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T02:30:00Z"), AppZone.ID);
     private final LocalDate today = LocalDate.of(2026, 7, 26);
@@ -70,7 +70,7 @@ class HabitRegistrationServiceTest {
         when(telegramUserResolver.resolve(sender)).thenReturn(user);
         when(photoStorage.download("file-id", today, 700L)).thenReturn(Optional.of("/app/fotos/2026-07-26/700.jpg"));
         when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0))
-                .thenReturn("Parabéns Lucas! Alimentação boa registrado(a).");
+                .thenReturn("Parabéns Lucas! Alimentação saudável registrado(a).");
 
         service().register(sender, goodFood, null, "file-id", 999L, 700L);
 
@@ -83,7 +83,7 @@ class HabitRegistrationServiceTest {
         assertThat(captor.getValue().getReferenceDate()).isEqualTo(today);
         assertThat(captor.getValue().getTelegramMessageId()).isEqualTo(700L);
 
-        verify(telegramReplySender).reply(999L, 700, "Parabéns Lucas! Alimentação boa registrado(a).");
+        verify(telegramReplySender).reply(999L, 700, "Parabéns Lucas! Alimentação saudável registrado(a).");
     }
 
     @Test
