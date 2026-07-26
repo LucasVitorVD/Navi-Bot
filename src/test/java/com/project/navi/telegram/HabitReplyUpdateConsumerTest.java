@@ -5,6 +5,7 @@ import com.project.navi.domain.HabitRecord;
 import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
 import com.project.navi.photo.PhotoStorage;
+import com.project.navi.progress.HabitProgressCalculator;
 import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
@@ -44,6 +45,12 @@ class HabitReplyUpdateConsumerTest {
     private HabitQuantityInterpreter habitQuantityInterpreter;
 
     @Mock
+    private HabitProgressCalculator habitProgressCalculator;
+
+    @Mock
+    private HabitRecordConfirmationMessageFormatter confirmationMessageFormatter;
+
+    @Mock
     private TelegramReplySender telegramReplySender;
 
     @Mock
@@ -60,10 +67,12 @@ class HabitReplyUpdateConsumerTest {
     // 2026-07-27T02:30:00Z == 2026-07-26T23:30:00 em América/São Paulo (UTC-3):
     // prova que o cálculo do dia usa a zona correta, não o padrão do sistema (provavelmente UTC na VM).
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T02:30:00Z"), AppZone.ID);
+    private final LocalDate today = LocalDate.of(2026, 7, 26);
 
     private HabitReplyUpdateConsumer consumer() {
         return new HabitReplyUpdateConsumer(habitIdentificationService, telegramUserResolver,
-                habitQuantityInterpreter, telegramReplySender, habitRecordRepository, photoStorage, clock);
+                habitQuantityInterpreter, habitProgressCalculator, confirmationMessageFormatter,
+                telegramReplySender, habitRecordRepository, photoStorage, clock);
     }
 
     private Update replyWithPhotoUpdate(long repliedToMessageId, long chatId, String caption) {
@@ -87,11 +96,13 @@ class HabitReplyUpdateConsumerTest {
     }
 
     @Test
-    void savesRecordForBinaryHabitWithoutCallingInterpreter() {
+    void savesRecordForBinaryHabitAndSendsConfirmation() {
         when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(goodFood));
         when(telegramUserResolver.resolve(any())).thenReturn(user);
-        when(photoStorage.download("large", LocalDate.of(2026, 7, 26), 600L))
+        when(photoStorage.download("large", today, 600L))
                 .thenReturn(Optional.of("/app/fotos/2026-07-26/600.jpg"));
+        when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0))
+                .thenReturn("Parabéns Lucas! Alimentação boa registrado(a).");
 
         consumer().consume(replyWithPhotoUpdate(555L, 999L, null));
 
@@ -99,12 +110,13 @@ class HabitReplyUpdateConsumerTest {
         verify(habitRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getExtractedQuantity()).isNull();
         assertThat(captor.getValue().getHabit()).isEqualTo(goodFood);
-        assertThat(captor.getValue().getReferenceDate()).isEqualTo(LocalDate.of(2026, 7, 26));
+        assertThat(captor.getValue().getReferenceDate()).isEqualTo(today);
         assertThat(captor.getValue().getCreatedAt()).isEqualTo(Instant.parse("2026-07-27T02:30:00Z"));
         assertThat(captor.getValue().getLocalPhotoPath()).isEqualTo("/app/fotos/2026-07-26/600.jpg");
 
         verify(habitQuantityInterpreter, never()).interpret(any(), any(), any());
-        verify(telegramReplySender, never()).reply(any(), any(), any());
+        verify(habitProgressCalculator, never()).remaining(any(), any(), any());
+        verify(telegramReplySender).reply(999L, 600, "Parabéns Lucas! Alimentação boa registrado(a).");
     }
 
     @Test
@@ -121,10 +133,13 @@ class HabitReplyUpdateConsumerTest {
     }
 
     @Test
-    void savesRecordWithInterpretedQuantityForCumulativeHabit() {
+    void savesRecordWithInterpretedQuantityAndSendsConfirmationWithRemaining() {
         when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(water));
         when(telegramUserResolver.resolve(any())).thenReturn(user);
         when(habitQuantityInterpreter.interpret(user, water, "bebi um copo")).thenReturn(Optional.of(500));
+        when(habitProgressCalculator.remaining(user, water, today)).thenReturn(2500);
+        when(confirmationMessageFormatter.confirmationFor(user, water, 500, 2500))
+                .thenReturn("Parabéns Lucas! Faltam 2500ml (~5 garrafas).");
 
         consumer().consume(replyWithPhotoUpdate(555L, 999L, "bebi um copo"));
 
@@ -132,7 +147,7 @@ class HabitReplyUpdateConsumerTest {
         verify(habitRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getExtractedQuantity()).isEqualTo(500);
 
-        verify(telegramReplySender, never()).reply(any(), any(), any());
+        verify(telegramReplySender).reply(999L, 600, "Parabéns Lucas! Faltam 2500ml (~5 garrafas).");
     }
 
     @Test
@@ -147,6 +162,7 @@ class HabitReplyUpdateConsumerTest {
         verify(habitRecordRepository, never()).save(any());
         verify(telegramReplySender).reply(999L, 600, "Configure sua garrafa");
         verify(photoStorage, never()).download(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+        verify(habitProgressCalculator, never()).remaining(any(), any(), any());
     }
 
     @Test

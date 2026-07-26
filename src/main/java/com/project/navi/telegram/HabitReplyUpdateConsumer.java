@@ -5,6 +5,7 @@ import com.project.navi.domain.HabitRecord;
 import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
 import com.project.navi.photo.PhotoStorage;
+import com.project.navi.progress.HabitProgressCalculator;
 import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
@@ -27,6 +28,8 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
     private final HabitIdentificationService habitIdentificationService;
     private final TelegramUserResolver telegramUserResolver;
     private final HabitQuantityInterpreter habitQuantityInterpreter;
+    private final HabitProgressCalculator habitProgressCalculator;
+    private final HabitRecordConfirmationMessageFormatter confirmationMessageFormatter;
     private final TelegramReplySender telegramReplySender;
     private final HabitRecordRepository habitRecordRepository;
     private final PhotoStorage photoStorage;
@@ -35,6 +38,8 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
     public HabitReplyUpdateConsumer(HabitIdentificationService habitIdentificationService,
                                      TelegramUserResolver telegramUserResolver,
                                      HabitQuantityInterpreter habitQuantityInterpreter,
+                                     HabitProgressCalculator habitProgressCalculator,
+                                     HabitRecordConfirmationMessageFormatter confirmationMessageFormatter,
                                      TelegramReplySender telegramReplySender,
                                      HabitRecordRepository habitRecordRepository,
                                      PhotoStorage photoStorage,
@@ -42,6 +47,8 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
         this.habitIdentificationService = habitIdentificationService;
         this.telegramUserResolver = telegramUserResolver;
         this.habitQuantityInterpreter = habitQuantityInterpreter;
+        this.habitProgressCalculator = habitProgressCalculator;
+        this.confirmationMessageFormatter = confirmationMessageFormatter;
         this.telegramReplySender = telegramReplySender;
         this.habitRecordRepository = habitRecordRepository;
         this.photoStorage = photoStorage;
@@ -91,6 +98,12 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
                 .localPhotoPath(localPhotoPath)
                 .telegramMessageId(message.getMessageId().longValue())
                 .build());
+
+        int remaining = resolvedHabit.getType() == HabitType.CUMULATIVE
+                ? habitProgressCalculator.remaining(user, resolvedHabit, referenceDate)
+                : 0;
+        telegramReplySender.reply(message.getChatId(), message.getMessageId(),
+                confirmationMessageFormatter.confirmationFor(user, resolvedHabit, quantity, remaining));
     }
 
     private String largestPhoto(List<PhotoSize> sizes) {
