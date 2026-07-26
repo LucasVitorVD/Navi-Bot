@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Configuration
 public class TelegramBotConfiguration {
@@ -13,5 +15,11 @@ public class TelegramBotConfiguration {
     public NaviTelegramBot naviTelegramBot(@Value("${TELEGRAM_BOT_TOKEN:}") String botToken,
                                             HabitReplyUpdateConsumer habitReplyUpdateConsumer) {
         return new NaviTelegramBot(botToken, habitReplyUpdateConsumer);
+    }
+
+    @Bean
+    @ConditionalOnExpression("!'${TELEGRAM_BOT_TOKEN:}'.isBlank()")
+    public TelegramClient telegramClient(@Value("${TELEGRAM_BOT_TOKEN:}") String botToken) {
+        return new OkHttpTelegramClient(botToken);
     }
 }
