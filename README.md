@@ -2,7 +2,7 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 2/8 — entidades e repositórios (`User`, `Habit`, `UserHabitConfig`, `HabitRecord`) com testes de persistência.
+**Status:** Etapa 3/8 — seed fixa dos hábitos (Água, Estudo, Cardio, Alimentação boa).
 
 ## Rodando via Docker Compose
 
@@ -36,6 +36,10 @@ Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.pr
 | `HabitRecord` | `habit_records` | `registro` |
 
 `spring.jpa.hibernate.ddl-auto=update` cria/atualiza o schema automaticamente (o projeto ainda não usa ferramenta de migration como Flyway/Liquibase).
+
+## Seed de hábitos (Etapa 3)
+
+`com.project.navi.seed.HabitSeeder` roda como `ApplicationRunner` no startup e popula a tabela `habits` com os 4 hábitos fixos, de forma idempotente (só insere se a tabela estiver vazia). Os nomes exibidos (`"Água"`, `"Estudo"`, `"Cardio"`, `"Alimentação boa"`) ficam em português, já que são conteúdo enviado ao grupo no Telegram — a regra de nomenclatura em inglês vale para tabelas/colunas/classes, não para dados de domínio voltados ao usuário.
 
 ## Estrutura de pacotes prevista (próximas etapas)
 
