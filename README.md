@@ -2,7 +2,7 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 7/8 — scheduler dos lembretes (07:30, 17:00) e resumo diário (22:00).
+**Status:** Etapa 8/8 (MVP completo) — armazenamento local das fotos.
 
 ## Rodando via Docker Compose
 
@@ -49,7 +49,7 @@ Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.pr
 
 `com.project.navi.telegram`:
 - `NaviTelegramBot` / `TelegramBotConfiguration` — registra o bot via **long polling** (biblioteca `telegrambots-springboot-longpolling-starter`). Long polling foi escolhido em vez de webhook porque dispensa domínio/TLS na VM Oracle Free, mantendo a simplicidade do deploy.
-- `HabitReplyUpdateConsumer` — recebe cada `Update`, ignora o que não for reply-com-foto, identifica o hábito (Etapa 4) e o usuário (auto-registrando se for a primeira interação), e grava um `HabitRecord`. `extractedQuantity` e `localPhotoPath` ficam `null` por enquanto — preenchidos nas Etapas 6 e 8.
+- `HabitReplyUpdateConsumer` — recebe cada `Update`, ignora o que não for reply-com-foto, identifica o hábito (Etapa 4) e o usuário (auto-registrando se for a primeira interação), e grava um `HabitRecord` com `extractedQuantity` (Etapa 6) e `localPhotoPath` (Etapa 8) já preenchidos.
 - O bot só é registrado se `TELEGRAM_BOT_TOKEN` estiver configurado (não em branco). Sem token, a aplicação sobe normalmente com a integração desabilitada; com um token inválido, a falha continua explícita no startup.
 - Testado de forma isolada (Mockito + `ApplicationContextRunner`), sem depender de rede real — `telegrambots.enabled=false` em teste evita qualquer tentativa de registro contra a API do Telegram.
 - `TelegramUpdateDispatcher` roteia updates de texto `/config` para `HabitConfigCommandConsumer`; o resto vai para `HabitReplyUpdateConsumer`.
@@ -73,6 +73,10 @@ Em ambos os casos, se a quantidade não puder ser determinada, o `HabitReplyUpda
 
 Sem `TELEGRAM_GROUP_CHAT_ID` configurado, os três métodos não fazem nada (mesmo padrão de degradação graciosa das Etapas 5/6). Testado via orquestração mockada (`HabitReminderSchedulerTest`) e formatação de mensagens isolada (`HabitReminderMessageFormatterTest`), sem depender de cron real disparar durante os testes.
 
-## Estrutura de pacotes prevista (próximas etapas)
+## Armazenamento local das fotos (Etapa 8)
 
-- `com.project.navi.foto` (ou similar) — Etapa 8, armazenamento local das fotos
+`com.project.navi.photo.TelegramPhotoStorage` baixa a foto original do Telegram (`GetFile` + `downloadFileAsStream`) e salva em `./fotos/{data-referência}/{telegram_message_id}.{extensão}` (extensão extraída do `file_path` retornado pelo Telegram, com fallback para `.jpg`). Configurável via `PHOTO_STORAGE_DIR` (padrão `./fotos`, já mapeado para `/app/fotos` no `docker-compose.yml` desde a Etapa 1).
+
+O download só acontece no caminho que efetivamente salva um `HabitRecord` — se a interpretação de quantidade falhar (Etapa 6) e o registro for descartado, nenhuma foto é baixada, evitando arquivos órfãos. Falha no download (rede, sem bot configurado, etc.) não impede o registro de ser salvo: `localPhotoPath` fica `null`, mas `telegramPhotoFileId` continua sendo a referência confiável para reprocessar depois.
+
+Com isso, o MVP descrito na especificação está completo: bot funcional, scheduler de lembretes, registro via reply + foto com parsing por IA, modelo de dados completo e fotos armazenadas localmente.
