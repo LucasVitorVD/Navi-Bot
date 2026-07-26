@@ -2,7 +2,9 @@ package com.project.navi.telegram;
 
 import com.project.navi.domain.Habit;
 import com.project.navi.domain.HabitRecord;
+import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
+import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
 import org.springframework.stereotype.Component;
@@ -22,13 +24,19 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
 
     private final HabitIdentificationService habitIdentificationService;
     private final TelegramUserResolver telegramUserResolver;
+    private final HabitQuantityInterpreter habitQuantityInterpreter;
+    private final TelegramReplySender telegramReplySender;
     private final HabitRecordRepository habitRecordRepository;
 
     public HabitReplyUpdateConsumer(HabitIdentificationService habitIdentificationService,
                                      TelegramUserResolver telegramUserResolver,
+                                     HabitQuantityInterpreter habitQuantityInterpreter,
+                                     TelegramReplySender telegramReplySender,
                                      HabitRecordRepository habitRecordRepository) {
         this.habitIdentificationService = habitIdentificationService;
         this.telegramUserResolver = telegramUserResolver;
+        this.habitQuantityInterpreter = habitQuantityInterpreter;
+        this.telegramReplySender = telegramReplySender;
         this.habitRecordRepository = habitRecordRepository;
     }
 
@@ -46,13 +54,26 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
         }
 
         User user = telegramUserResolver.resolve(message.getFrom());
+        Habit resolvedHabit = habit.get();
+
+        Integer quantity = null;
+        if (resolvedHabit.getType() == HabitType.CUMULATIVE) {
+            Optional<Integer> interpreted = habitQuantityInterpreter.interpret(user, resolvedHabit, message.getCaption());
+            if (interpreted.isEmpty()) {
+                telegramReplySender.reply(message.getChatId(), message.getMessageId(),
+                        habitQuantityInterpreter.failureMessageFor(resolvedHabit));
+                return;
+            }
+            quantity = interpreted.get();
+        }
 
         habitRecordRepository.save(HabitRecord.builder()
                 .user(user)
-                .habit(habit.get())
+                .habit(resolvedHabit)
                 .referenceDate(LocalDate.now())
                 .createdAt(Instant.now())
                 .captionText(message.getCaption())
+                .extractedQuantity(quantity)
                 .telegramPhotoFileId(largestPhoto(message.getPhoto()))
                 .telegramMessageId(message.getMessageId().longValue())
                 .build());
