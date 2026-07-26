@@ -2,11 +2,11 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 6/8 — interpretação de quantidade (água por configuração pessoal; estudo/cardio via Gemini).
+**Status:** Etapa 7/8 — scheduler dos lembretes (07:30, 17:00) e resumo diário (22:00).
 
 ## Rodando via Docker Compose
 
-1. Copie `.env.example` para `.env` e preencha `TELEGRAM_BOT_TOKEN`/`GEMINI_API_KEY` para a integração real funcionar (sem elas, a aplicação sobe normalmente com essas integrações desabilitadas).
+1. Copie `.env.example` para `.env` e preencha `TELEGRAM_BOT_TOKEN`/`GEMINI_API_KEY`/`TELEGRAM_GROUP_CHAT_ID` para as integrações reais funcionarem (sem elas, a aplicação sobe normalmente com essas integrações desabilitadas).
 2. `docker compose up --build`
 3. Aplicação sobe em `http://localhost:8080`. O arquivo SQLite é persistido em `./data/navi.db` e fotos futuras em `./fotos/` (fora do container).
 
@@ -63,6 +63,16 @@ Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.pr
 
 Em ambos os casos, se a quantidade não puder ser determinada, o `HabitReplyUpdateConsumer` **não salva o registro** e responde pedindo para configurar/reformular — nunca falha silenciosamente. Testado com a IA mockada (`HabitQuantityInterpreterTest`) antes de integrar a API real, que por sua vez é testada via `MockRestServiceServer` sem precisar de chave real; falhas de rede/parsing retornam vazio em vez de lançar exceção.
 
+## Scheduler dos lembretes (Etapa 7)
+
+`com.project.navi.scheduler.HabitReminderScheduler` — três `@Scheduled` com cron fixo em `America/Sao_Paulo` (via `com.project.navi.time.ClockConfiguration`, também usado para corrigir um bug real: `HabitReplyUpdateConsumer` calculava `referenceDate` no fuso padrão do sistema, provavelmente UTC na VM, o que faria replies enviadas à noite em Brasília caírem no dia seguinte):
+
+- **07:30**: uma mensagem por hábito no grupo. Cada envio grava um `HabitReminderMessage` real (`telegram_message_id` + hábito + data) — até aqui só existia a leitura (Etapa 4).
+- **17:00**: reforço no grupo listando, por pessoa, os hábitos ainda pendentes (`com.project.navi.progress.HabitProgressCalculator` soma o progresso do dia, travando em 100%). Enviado no grupo, não por DM — decisão explícita, já que DM só funciona se a pessoa já tiver iniciado conversa privada com o bot.
+- **22:00**: resumo do dia (progresso de todos) + frase motivacional de anime (`com.project.navi.quote.AnimeChanQuoteProvider`, via `api.animechan.io`, gratuita e sem chave — se falhar, o resumo sai sem a frase).
+
+Sem `TELEGRAM_GROUP_CHAT_ID` configurado, os três métodos não fazem nada (mesmo padrão de degradação graciosa das Etapas 5/6). Testado via orquestração mockada (`HabitReminderSchedulerTest`) e formatação de mensagens isolada (`HabitReminderMessageFormatterTest`), sem depender de cron real disparar durante os testes.
+
 ## Estrutura de pacotes prevista (próximas etapas)
 
-- `com.project.navi.scheduler` — Etapa 7
+- `com.project.navi.foto` (ou similar) — Etapa 8, armazenamento local das fotos
