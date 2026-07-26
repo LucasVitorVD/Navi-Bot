@@ -2,7 +2,7 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 4/8 — lógica de identificação do hábito a partir da mensagem respondida (reply), ainda sem integração real com Telegram.
+**Status:** Etapa 5/8 — integração real com a API do Telegram (recebimento de mensagens/fotos).
 
 ## Rodando via Docker Compose
 
@@ -45,8 +45,15 @@ Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.pr
 
 `com.project.navi.domain.HabitReminderMessage` guarda a relação entre o `telegram_message_id` do lembrete enviado (uma mensagem por hábito, às 07:30) e o `Habit` correspondente. `com.project.navi.reminder.HabitIdentificationService.identifyHabit(Long)` recebe o id da mensagem original respondida (`reply_to_message`) e resolve para o `Habit`, sem exigir comando ou formato rígido — retorna vazio se a reply não corresponder a nenhum lembrete conhecido. Testado de forma isolada (Mockito), sem integração real com Telegram (Etapa 5).
 
+## Integração com o Telegram (Etapa 5)
+
+`com.project.navi.telegram`:
+- `NaviTelegramBot` / `TelegramBotConfiguration` — registra o bot via **long polling** (biblioteca `telegrambots-springboot-longpolling-starter`). Long polling foi escolhido em vez de webhook porque dispensa domínio/TLS na VM Oracle Free, mantendo a simplicidade do deploy.
+- `HabitReplyUpdateConsumer` — recebe cada `Update`, ignora o que não for reply-com-foto, identifica o hábito (Etapa 4) e o usuário (auto-registrando se for a primeira interação), e grava um `HabitRecord`. `extractedQuantity` e `localPhotoPath` ficam `null` por enquanto — preenchidos nas Etapas 6 e 8.
+- O bot só é registrado se `TELEGRAM_BOT_TOKEN` estiver configurado (não em branco). Sem token, a aplicação sobe normalmente com a integração desabilitada; com um token inválido, a falha continua explícita no startup.
+- Testado de forma isolada (Mockito + `ApplicationContextRunner`), sem depender de rede real — `telegrambots.enabled=false` em teste evita qualquer tentativa de registro contra a API do Telegram.
+
 ## Estrutura de pacotes prevista (próximas etapas)
 
-- `com.project.navi.telegram` — Etapa 5
 - `com.project.navi.ai` — Etapa 6
 - `com.project.navi.scheduler` — Etapa 7
