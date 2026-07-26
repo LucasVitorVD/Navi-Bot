@@ -10,15 +10,22 @@ public class TelegramUpdateDispatcher implements LongPollingSingleThreadUpdateCo
 
     private final HabitConfigCommandConsumer habitConfigCommandConsumer;
     private final HabitReplyUpdateConsumer habitReplyUpdateConsumer;
+    private final HabitSelectionCallbackConsumer habitSelectionCallbackConsumer;
 
     public TelegramUpdateDispatcher(HabitConfigCommandConsumer habitConfigCommandConsumer,
-                                     HabitReplyUpdateConsumer habitReplyUpdateConsumer) {
+                                     HabitReplyUpdateConsumer habitReplyUpdateConsumer,
+                                     HabitSelectionCallbackConsumer habitSelectionCallbackConsumer) {
         this.habitConfigCommandConsumer = habitConfigCommandConsumer;
         this.habitReplyUpdateConsumer = habitReplyUpdateConsumer;
+        this.habitSelectionCallbackConsumer = habitSelectionCallbackConsumer;
     }
 
     @Override
     public void consume(Update update) {
+        if (update.hasCallbackQuery()) {
+            habitSelectionCallbackConsumer.consume(update);
+            return;
+        }
         if (isConfigCommand(update.getMessage())) {
             habitConfigCommandConsumer.consume(update);
             return;

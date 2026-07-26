@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
@@ -19,14 +20,27 @@ class TelegramUpdateDispatcherTest {
     @Mock
     private HabitReplyUpdateConsumer habitReplyUpdateConsumer;
 
+    @Mock
+    private HabitSelectionCallbackConsumer habitSelectionCallbackConsumer;
+
     private TelegramUpdateDispatcher dispatcher() {
-        return new TelegramUpdateDispatcher(habitConfigCommandConsumer, habitReplyUpdateConsumer);
+        return new TelegramUpdateDispatcher(habitConfigCommandConsumer, habitReplyUpdateConsumer,
+                habitSelectionCallbackConsumer);
     }
 
     private Update textUpdate(String text) {
         Message message = Message.builder().messageId(1).text(text).build();
         Update update = new Update();
         update.setMessage(message);
+        return update;
+    }
+
+    private Update callbackUpdate() {
+        CallbackQuery callbackQuery = new CallbackQuery();
+        callbackQuery.setId("cbq-1");
+        callbackQuery.setData("habit-select:1:1");
+        Update update = new Update();
+        update.setCallbackQuery(callbackQuery);
         return update;
     }
 
@@ -57,6 +71,17 @@ class TelegramUpdateDispatcherTest {
         dispatcher().consume(update);
 
         verify(habitReplyUpdateConsumer).consume(update);
+        verify(habitConfigCommandConsumer, never()).consume(update);
+    }
+
+    @Test
+    void delegatesToCallbackConsumerWhenUpdateHasCallbackQuery() {
+        Update update = callbackUpdate();
+
+        dispatcher().consume(update);
+
+        verify(habitSelectionCallbackConsumer).consume(update);
+        verify(habitReplyUpdateConsumer, never()).consume(update);
         verify(habitConfigCommandConsumer, never()).consume(update);
     }
 }
