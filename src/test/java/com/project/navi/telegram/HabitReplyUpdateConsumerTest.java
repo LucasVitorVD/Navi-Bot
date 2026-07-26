@@ -4,6 +4,7 @@ import com.project.navi.domain.Habit;
 import com.project.navi.domain.HabitRecord;
 import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
+import com.project.navi.photo.PhotoStorage;
 import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
@@ -48,6 +49,9 @@ class HabitReplyUpdateConsumerTest {
     @Mock
     private HabitRecordRepository habitRecordRepository;
 
+    @Mock
+    private PhotoStorage photoStorage;
+
     private final User user = User.builder().id(10L).telegramUserId(42L).name("Lucas").build();
 
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
@@ -59,7 +63,7 @@ class HabitReplyUpdateConsumerTest {
 
     private HabitReplyUpdateConsumer consumer() {
         return new HabitReplyUpdateConsumer(habitIdentificationService, telegramUserResolver,
-                habitQuantityInterpreter, telegramReplySender, habitRecordRepository, clock);
+                habitQuantityInterpreter, telegramReplySender, habitRecordRepository, photoStorage, clock);
     }
 
     private Update replyWithPhotoUpdate(long repliedToMessageId, long chatId, String caption) {
@@ -86,6 +90,8 @@ class HabitReplyUpdateConsumerTest {
     void savesRecordForBinaryHabitWithoutCallingInterpreter() {
         when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(goodFood));
         when(telegramUserResolver.resolve(any())).thenReturn(user);
+        when(photoStorage.download("large", LocalDate.of(2026, 7, 26), 600L))
+                .thenReturn(Optional.of("/app/fotos/2026-07-26/600.jpg"));
 
         consumer().consume(replyWithPhotoUpdate(555L, 999L, null));
 
@@ -95,9 +101,23 @@ class HabitReplyUpdateConsumerTest {
         assertThat(captor.getValue().getHabit()).isEqualTo(goodFood);
         assertThat(captor.getValue().getReferenceDate()).isEqualTo(LocalDate.of(2026, 7, 26));
         assertThat(captor.getValue().getCreatedAt()).isEqualTo(Instant.parse("2026-07-27T02:30:00Z"));
+        assertThat(captor.getValue().getLocalPhotoPath()).isEqualTo("/app/fotos/2026-07-26/600.jpg");
 
         verify(habitQuantityInterpreter, never()).interpret(any(), any(), any());
         verify(telegramReplySender, never()).reply(any(), any(), any());
+    }
+
+    @Test
+    void savesRecordWithNullLocalPhotoPathWhenDownloadFails() {
+        when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(goodFood));
+        when(telegramUserResolver.resolve(any())).thenReturn(user);
+        when(photoStorage.download(any(), any(), org.mockito.ArgumentMatchers.anyLong())).thenReturn(Optional.empty());
+
+        consumer().consume(replyWithPhotoUpdate(555L, 999L, null));
+
+        ArgumentCaptor<HabitRecord> captor = ArgumentCaptor.forClass(HabitRecord.class);
+        verify(habitRecordRepository).save(captor.capture());
+        assertThat(captor.getValue().getLocalPhotoPath()).isNull();
     }
 
     @Test
@@ -126,6 +146,7 @@ class HabitReplyUpdateConsumerTest {
 
         verify(habitRecordRepository, never()).save(any());
         verify(telegramReplySender).reply(999L, 600, "Configure sua garrafa");
+        verify(photoStorage, never()).download(any(), any(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.project.navi.domain.Habit;
 import com.project.navi.domain.HabitRecord;
 import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
+import com.project.navi.photo.PhotoStorage;
 import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
@@ -28,6 +29,7 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
     private final HabitQuantityInterpreter habitQuantityInterpreter;
     private final TelegramReplySender telegramReplySender;
     private final HabitRecordRepository habitRecordRepository;
+    private final PhotoStorage photoStorage;
     private final Clock clock;
 
     public HabitReplyUpdateConsumer(HabitIdentificationService habitIdentificationService,
@@ -35,12 +37,14 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
                                      HabitQuantityInterpreter habitQuantityInterpreter,
                                      TelegramReplySender telegramReplySender,
                                      HabitRecordRepository habitRecordRepository,
+                                     PhotoStorage photoStorage,
                                      Clock clock) {
         this.habitIdentificationService = habitIdentificationService;
         this.telegramUserResolver = telegramUserResolver;
         this.habitQuantityInterpreter = habitQuantityInterpreter;
         this.telegramReplySender = telegramReplySender;
         this.habitRecordRepository = habitRecordRepository;
+        this.photoStorage = photoStorage;
         this.clock = clock;
     }
 
@@ -71,14 +75,20 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
             quantity = interpreted.get();
         }
 
+        LocalDate referenceDate = LocalDate.now(clock);
+        String photoFileId = largestPhoto(message.getPhoto());
+        String localPhotoPath = photoStorage.download(photoFileId, referenceDate, message.getMessageId())
+                .orElse(null);
+
         habitRecordRepository.save(HabitRecord.builder()
                 .user(user)
                 .habit(resolvedHabit)
-                .referenceDate(LocalDate.now(clock))
+                .referenceDate(referenceDate)
                 .createdAt(Instant.now(clock))
                 .captionText(message.getCaption())
                 .extractedQuantity(quantity)
-                .telegramPhotoFileId(largestPhoto(message.getPhoto()))
+                .telegramPhotoFileId(photoFileId)
+                .localPhotoPath(localPhotoPath)
                 .telegramMessageId(message.getMessageId().longValue())
                 .build());
     }
