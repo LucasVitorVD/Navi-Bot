@@ -6,13 +6,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.generics.TelegramClient;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,10 +24,14 @@ class TelegramReplySenderTest {
     private TelegramClient telegramClient;
 
     @Test
-    void sendsMessageWhenClientIsConfigured() throws TelegramApiException {
+    void sendsReplyAndReturnsSentMessageId() throws TelegramApiException {
+        when(telegramClient.execute(any(SendMessage.class))).thenReturn(Message.builder().messageId(999).build());
+
         TelegramReplySender sender = new TelegramReplySender(Optional.of(telegramClient));
 
-        sender.reply(123L, 600, "Pode reformular?");
+        Optional<Integer> result = sender.reply(123L, 600, "Pode reformular?");
+
+        assertThat(result).contains(999);
 
         ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
         verify(telegramClient).execute(captor.capture());
@@ -38,19 +43,33 @@ class TelegramReplySenderTest {
     }
 
     @Test
-    void doesNothingWhenClientIsNotConfigured() {
-        TelegramReplySender sender = new TelegramReplySender(Optional.empty());
-
-        assertThatCode(() -> sender.reply(123L, 600, "Pode reformular?")).doesNotThrowAnyException();
-    }
-
-    @Test
-    void swallowsTelegramApiExceptionOnSendFailure() throws TelegramApiException {
-        when(telegramClient.execute(org.mockito.ArgumentMatchers.any(SendMessage.class)))
-                .thenThrow(new TelegramApiException("boom"));
+    void sendsStandaloneMessageWhenReplyToMessageIdIsNull() throws TelegramApiException {
+        when(telegramClient.execute(any(SendMessage.class))).thenReturn(Message.builder().messageId(700).build());
 
         TelegramReplySender sender = new TelegramReplySender(Optional.of(telegramClient));
 
-        assertThatCode(() -> sender.reply(123L, 600, "Pode reformular?")).doesNotThrowAnyException();
+        Optional<Integer> result = sender.reply(123L, null, "💧 Bora beber água hoje!");
+
+        assertThat(result).contains(700);
+
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getReplyToMessageId()).isNull();
+    }
+
+    @Test
+    void returnsEmptyWhenClientIsNotConfigured() {
+        TelegramReplySender sender = new TelegramReplySender(Optional.empty());
+
+        assertThat(sender.reply(123L, 600, "Pode reformular?")).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyWhenSendFails() throws TelegramApiException {
+        when(telegramClient.execute(any(SendMessage.class))).thenThrow(new TelegramApiException("boom"));
+
+        TelegramReplySender sender = new TelegramReplySender(Optional.of(telegramClient));
+
+        assertThat(sender.reply(123L, 600, "Pode reformular?")).isEmpty();
     }
 }

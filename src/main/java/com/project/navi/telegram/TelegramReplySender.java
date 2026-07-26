@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -20,20 +21,27 @@ public class TelegramReplySender {
         this.telegramClient = telegramClient.orElse(null);
     }
 
-    public void reply(Long chatId, Integer replyToMessageId, String text) {
+    /**
+     * Envia uma mensagem, opcionalmente como reply a outra (replyToMessageId pode ser null
+     * para uma mensagem avulsa, como os lembretes enviados pelo scheduler). Retorna o id da
+     * mensagem enviada, útil para rastreabilidade (ex: HabitReminderMessage).
+     */
+    public Optional<Integer> reply(Long chatId, Integer replyToMessageId, String text) {
         if (telegramClient == null) {
             log.warn("Bot do Telegram não configurado (TELEGRAM_BOT_TOKEN ausente); mensagem não enviada: {}", text);
-            return;
+            return Optional.empty();
         }
 
         try {
-            telegramClient.execute(SendMessage.builder()
+            Message sent = telegramClient.execute(SendMessage.builder()
                     .chatId(chatId.toString())
                     .replyToMessageId(replyToMessageId)
                     .text(text)
                     .build());
+            return Optional.of(sent.getMessageId());
         } catch (TelegramApiException e) {
             log.warn("Falha ao enviar mensagem via Telegram", e);
+            return Optional.empty();
         }
     }
 }
