@@ -56,4 +56,49 @@ class UserHabitConfigRepositoryTest {
         assertThat(found.get().getHabit().getId()).isEqualTo(habit.getId());
         assertThat(found.get().getPersonalUnitValue()).isEqualTo(500);
     }
+
+    @Test
+    void findsConfigByUserAndHabit() {
+        User user = userRepository.save(User.builder()
+                .telegramUserId(43L)
+                .name("Ana")
+                .createdAt(Instant.now())
+                .build());
+
+        Habit habit = habitRepository.save(Habit.builder()
+                .name("Água")
+                .type(HabitType.CUMULATIVE)
+                .unit("ml")
+                .target(3000)
+                .build());
+
+        userHabitConfigRepository.save(UserHabitConfig.builder()
+                .user(user)
+                .habit(habit)
+                .personalUnitValue(750)
+                .build());
+
+        Optional<UserHabitConfig> found = userHabitConfigRepository.findByUserAndHabit(user, habit);
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getPersonalUnitValue()).isEqualTo(750);
+    }
+
+    @Test
+    void findByUserAndHabitReturnsEmptyWhenNotConfigured() {
+        User user = userRepository.save(User.builder()
+                .telegramUserId(44L)
+                .name("Beto")
+                .createdAt(Instant.now())
+                .build());
+
+        Habit habit = habitRepository.save(Habit.builder()
+                .name("Água")
+                .type(HabitType.CUMULATIVE)
+                .unit("ml")
+                .target(3000)
+                .build());
+
+        assertThat(userHabitConfigRepository.findByUserAndHabit(user, habit)).isEmpty();
+    }
 }
