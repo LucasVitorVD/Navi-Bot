@@ -10,6 +10,12 @@ Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao
 2. `docker compose up --build`
 3. Aplicação sobe em `http://localhost:8080`. O arquivo SQLite é persistido em `./data/navi.db` e fotos futuras em `./fotos/` (fora do container).
 
+## Visualizando logs (sem `docker logs`)
+
+O `docker-compose.yml` sobe também um container [Dozzle](https://dozzle.dev/), uma UI web para acompanhar os logs do container `navi` em tempo real (com busca e filtro), sem precisar rodar `docker logs`/`docker compose logs` no terminal.
+
+Acesse `http://localhost:8081` (por padrão só acessível pela própria máquina, via `127.0.0.1`). Para acessar remotamente, use um túnel SSH (`ssh -L 8081:localhost:8081 usuário@servidor`) em vez de expor a porta publicamente, já que o Dozzle não tem autenticação configurada.
+
 ## Rodando localmente sem Docker
 
 Requer Java 21.
