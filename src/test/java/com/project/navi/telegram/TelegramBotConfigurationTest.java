@@ -46,8 +46,8 @@ class TelegramBotConfigurationTest {
     @Configuration
     static class TestConfig {
         @Bean
-        HabitReplyUpdateConsumer habitReplyUpdateConsumer() {
-            return mock(HabitReplyUpdateConsumer.class);
+        TelegramUpdateDispatcher telegramUpdateDispatcher() {
+            return mock(TelegramUpdateDispatcher.class);
         }
     }
 }

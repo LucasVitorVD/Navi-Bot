@@ -13,8 +13,8 @@ public class TelegramBotConfiguration {
     @Bean
     @ConditionalOnExpression("!'${TELEGRAM_BOT_TOKEN:}'.isBlank()")
     public NaviTelegramBot naviTelegramBot(@Value("${TELEGRAM_BOT_TOKEN:}") String botToken,
-                                            HabitReplyUpdateConsumer habitReplyUpdateConsumer) {
-        return new NaviTelegramBot(botToken, habitReplyUpdateConsumer);
+                                            TelegramUpdateDispatcher telegramUpdateDispatcher) {
+        return new NaviTelegramBot(botToken, telegramUpdateDispatcher);
     }
 
     @Bean
