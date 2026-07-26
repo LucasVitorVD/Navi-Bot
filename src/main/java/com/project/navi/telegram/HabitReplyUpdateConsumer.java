@@ -5,7 +5,6 @@ import com.project.navi.domain.HabitRecord;
 import com.project.navi.domain.User;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
-import com.project.navi.repository.UserRepository;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -22,14 +21,14 @@ import java.util.Optional;
 public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
     private final HabitIdentificationService habitIdentificationService;
-    private final UserRepository userRepository;
+    private final TelegramUserResolver telegramUserResolver;
     private final HabitRecordRepository habitRecordRepository;
 
     public HabitReplyUpdateConsumer(HabitIdentificationService habitIdentificationService,
-                                     UserRepository userRepository,
+                                     TelegramUserResolver telegramUserResolver,
                                      HabitRecordRepository habitRecordRepository) {
         this.habitIdentificationService = habitIdentificationService;
-        this.userRepository = userRepository;
+        this.telegramUserResolver = telegramUserResolver;
         this.habitRecordRepository = habitRecordRepository;
     }
 
@@ -46,8 +45,7 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
             return;
         }
 
-        org.telegram.telegrambots.meta.api.objects.User sender = message.getFrom();
-        User user = resolveUser(sender);
+        User user = telegramUserResolver.resolve(message.getFrom());
 
         habitRecordRepository.save(HabitRecord.builder()
                 .user(user)
@@ -58,22 +56,6 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
                 .telegramPhotoFileId(largestPhoto(message.getPhoto()))
                 .telegramMessageId(message.getMessageId().longValue())
                 .build());
-    }
-
-    private User resolveUser(org.telegram.telegrambots.meta.api.objects.User sender) {
-        return userRepository.findByTelegramUserId(sender.getId())
-                .orElseGet(() -> userRepository.save(User.builder()
-                        .telegramUserId(sender.getId())
-                        .name(resolveName(sender))
-                        .createdAt(Instant.now())
-                        .build()));
-    }
-
-    private String resolveName(org.telegram.telegrambots.meta.api.objects.User sender) {
-        String lastName = sender.getLastName();
-        return (lastName == null || lastName.isBlank())
-                ? sender.getFirstName()
-                : sender.getFirstName() + " " + lastName;
     }
 
     private String largestPhoto(List<PhotoSize> sizes) {

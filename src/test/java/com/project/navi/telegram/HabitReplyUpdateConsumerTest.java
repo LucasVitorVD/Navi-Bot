@@ -6,7 +6,6 @@ import com.project.navi.domain.HabitType;
 import com.project.navi.domain.User;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
-import com.project.navi.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,7 +31,7 @@ class HabitReplyUpdateConsumerTest {
     private HabitIdentificationService habitIdentificationService;
 
     @Mock
-    private UserRepository userRepository;
+    private TelegramUserResolver telegramUserResolver;
 
     @Mock
     private HabitRecordRepository habitRecordRepository;
@@ -45,7 +45,7 @@ class HabitReplyUpdateConsumerTest {
             .build();
 
     private HabitReplyUpdateConsumer consumer() {
-        return new HabitReplyUpdateConsumer(habitIdentificationService, userRepository, habitRecordRepository);
+        return new HabitReplyUpdateConsumer(habitIdentificationService, telegramUserResolver, habitRecordRepository);
     }
 
     private Update replyWithPhotoUpdate(long repliedToMessageId, long senderTelegramId, String firstName,
@@ -75,11 +75,11 @@ class HabitReplyUpdateConsumerTest {
     }
 
     @Test
-    void savesHabitRecordForKnownUserRepliyingToKnownReminder() {
-        User existingUser = User.builder().id(10L).telegramUserId(42L).name("Lucas").build();
+    void savesHabitRecordUsingUserResolvedByTelegramUserResolver() {
+        User resolvedUser = User.builder().id(10L).telegramUserId(42L).name("Lucas").build();
 
         when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(habit));
-        when(userRepository.findByTelegramUserId(42L)).thenReturn(Optional.of(existingUser));
+        when(telegramUserResolver.resolve(any())).thenReturn(resolvedUser);
 
         consumer().consume(replyWithPhotoUpdate(555L, 42L, "Lucas", "bebi um copo"));
 
@@ -87,41 +87,20 @@ class HabitReplyUpdateConsumerTest {
         verify(habitRecordRepository).save(captor.capture());
 
         HabitRecord saved = captor.getValue();
-        assertThat(saved.getUser()).isEqualTo(existingUser);
+        assertThat(saved.getUser()).isEqualTo(resolvedUser);
         assertThat(saved.getHabit()).isEqualTo(habit);
         assertThat(saved.getCaptionText()).isEqualTo("bebi um copo");
         assertThat(saved.getTelegramPhotoFileId()).isEqualTo("large");
         assertThat(saved.getTelegramMessageId()).isEqualTo(600L);
         assertThat(saved.getExtractedQuantity()).isNull();
         assertThat(saved.getLocalPhotoPath()).isNull();
-        verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void createsNewUserWhenSenderIsNotYetKnown() {
-        User newlyCreatedUser = User.builder().id(11L).telegramUserId(99L).name("Beto").build();
-
-        when(habitIdentificationService.identifyHabit(555L)).thenReturn(Optional.of(habit));
-        when(userRepository.findByTelegramUserId(99L)).thenReturn(Optional.empty());
-        when(userRepository.save(org.mockito.ArgumentMatchers.any(User.class))).thenReturn(newlyCreatedUser);
-
-        consumer().consume(replyWithPhotoUpdate(555L, 99L, "Beto", null));
-
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getTelegramUserId()).isEqualTo(99L);
-        assertThat(userCaptor.getValue().getName()).isEqualTo("Beto");
-
-        ArgumentCaptor<HabitRecord> recordCaptor = ArgumentCaptor.forClass(HabitRecord.class);
-        verify(habitRecordRepository).save(recordCaptor.capture());
-        assertThat(recordCaptor.getValue().getUser()).isEqualTo(newlyCreatedUser);
     }
 
     @Test
     void ignoresUpdateWithoutMessage() {
         consumer().consume(new Update());
 
-        verify(habitRecordRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(habitRecordRepository, never()).save(any());
     }
 
     @Test
@@ -136,8 +115,8 @@ class HabitReplyUpdateConsumerTest {
 
         consumer().consume(update);
 
-        verify(habitRecordRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        verify(habitIdentificationService, never()).identifyHabit(org.mockito.ArgumentMatchers.any());
+        verify(habitRecordRepository, never()).save(any());
+        verify(habitIdentificationService, never()).identifyHabit(any());
     }
 
     @Test
@@ -153,8 +132,8 @@ class HabitReplyUpdateConsumerTest {
 
         consumer().consume(update);
 
-        verify(habitRecordRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        verify(habitIdentificationService, never()).identifyHabit(org.mockito.ArgumentMatchers.any());
+        verify(habitRecordRepository, never()).save(any());
+        verify(habitIdentificationService, never()).identifyHabit(any());
     }
 
     @Test
@@ -163,7 +142,7 @@ class HabitReplyUpdateConsumerTest {
 
         consumer().consume(replyWithPhotoUpdate(999L, 42L, "Lucas", "oi"));
 
-        verify(habitRecordRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        verify(userRepository, never()).findByTelegramUserId(org.mockito.ArgumentMatchers.any());
+        verify(habitRecordRepository, never()).save(any());
+        verify(telegramUserResolver, never()).resolve(any());
     }
 }
