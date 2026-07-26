@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -55,6 +56,22 @@ class TelegramReplySenderTest {
         ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
         verify(telegramClient).execute(captor.capture());
         assertThat(captor.getValue().getReplyToMessageId()).isNull();
+    }
+
+    @Test
+    void sendsMessageWithInlineKeyboardWhenProvided() throws TelegramApiException {
+        when(telegramClient.execute(any(SendMessage.class))).thenReturn(Message.builder().messageId(800).build());
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder().build();
+
+        TelegramReplySender sender = new TelegramReplySender(Optional.of(telegramClient));
+
+        Optional<Integer> result = sender.reply(123L, 600, "Qual hábito é esse?", keyboard);
+
+        assertThat(result).contains(800);
+
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getReplyMarkup()).isSameAs(keyboard);
     }
 
     @Test
