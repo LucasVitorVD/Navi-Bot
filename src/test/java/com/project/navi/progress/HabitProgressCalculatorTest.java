@@ -85,4 +85,27 @@ class HabitProgressCalculatorTest {
         assertThat(progress.percentage()).isEqualTo(100);
         assertThat(progress.isCompleted()).isTrue();
     }
+
+    @Test
+    void remainingIsTargetMinusSumWhenUnderTarget() {
+        when(habitRecordRepository.findByUserAndHabitAndReferenceDate(user, water, today))
+                .thenReturn(List.of(recordWith(500), recordWith(1000)));
+
+        assertThat(calculator().remaining(user, water, today)).isEqualTo(1500);
+    }
+
+    @Test
+    void remainingIsZeroNotNegativeWhenTargetExceeded() {
+        when(habitRecordRepository.findByUserAndHabitAndReferenceDate(user, water, today))
+                .thenReturn(List.of(recordWith(2000), recordWith(2000)));
+
+        assertThat(calculator().remaining(user, water, today)).isEqualTo(0);
+    }
+
+    @Test
+    void remainingEqualsTargetWhenNoRecordsYet() {
+        when(habitRecordRepository.findByUserAndHabitAndReferenceDate(user, water, today)).thenReturn(List.of());
+
+        assertThat(calculator().remaining(user, water, today)).isEqualTo(3000);
+    }
 }

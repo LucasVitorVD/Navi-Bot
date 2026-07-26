@@ -8,7 +8,6 @@ import com.project.navi.repository.HabitRecordRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Objects;
 
 @Component
@@ -21,20 +20,27 @@ public class HabitProgressCalculator {
     }
 
     public HabitProgress calculate(User user, Habit habit, LocalDate date) {
-        List<HabitRecord> records = habitRecordRepository.findByUserAndHabitAndReferenceDate(user, habit, date);
-
         if (habit.getType() == HabitType.BINARY) {
-            return new HabitProgress(habit, records.isEmpty() ? 0 : 100);
+            boolean hasRecord = !habitRecordRepository.findByUserAndHabitAndReferenceDate(user, habit, date).isEmpty();
+            return new HabitProgress(habit, hasRecord ? 100 : 0);
         }
 
-        int total = records.stream()
+        int total = sumQuantities(user, habit, date);
+        int target = habit.getTarget();
+        int percentage = target <= 0 ? 0 : Math.min(100, total * 100 / target);
+        return new HabitProgress(habit, percentage);
+    }
+
+    public int remaining(User user, Habit habit, LocalDate date) {
+        int total = sumQuantities(user, habit, date);
+        return Math.max(0, habit.getTarget() - total);
+    }
+
+    private int sumQuantities(User user, Habit habit, LocalDate date) {
+        return habitRecordRepository.findByUserAndHabitAndReferenceDate(user, habit, date).stream()
                 .map(HabitRecord::getExtractedQuantity)
                 .filter(Objects::nonNull)
                 .mapToInt(Integer::intValue)
                 .sum();
-
-        int target = habit.getTarget();
-        int percentage = target <= 0 ? 0 : Math.min(100, total * 100 / target);
-        return new HabitProgress(habit, percentage);
     }
 }
