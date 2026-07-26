@@ -95,4 +95,40 @@ class HabitRecordRepositoryTest {
 
         assertThat(habitRecordRepository.findAll()).hasSize(2);
     }
+
+    @Test
+    void findsRecordsForUserHabitAndDaySummingBothEntries() {
+        User user = userRepository.save(User.builder()
+                .telegramUserId(9L)
+                .name("Carla")
+                .createdAt(Instant.now())
+                .build());
+
+        Habit habit = habitRepository.save(Habit.builder()
+                .name("Água")
+                .type(HabitType.CUMULATIVE)
+                .unit("ml")
+                .target(3000)
+                .build());
+
+        LocalDate today = LocalDate.of(2026, 7, 27);
+        LocalDate yesterday = LocalDate.of(2026, 7, 26);
+
+        habitRecordRepository.save(HabitRecord.builder()
+                .user(user).habit(habit).referenceDate(today)
+                .createdAt(Instant.now()).extractedQuantity(500)
+                .telegramMessageId(1L).build());
+        habitRecordRepository.save(HabitRecord.builder()
+                .user(user).habit(habit).referenceDate(today)
+                .createdAt(Instant.now()).extractedQuantity(700)
+                .telegramMessageId(2L).build());
+        habitRecordRepository.save(HabitRecord.builder()
+                .user(user).habit(habit).referenceDate(yesterday)
+                .createdAt(Instant.now()).extractedQuantity(1000)
+                .telegramMessageId(3L).build());
+
+        assertThat(habitRecordRepository.findByUserAndHabitAndReferenceDate(user, habit, today))
+                .extracting(HabitRecord::getExtractedQuantity)
+                .containsExactlyInAnyOrder(500, 700);
+    }
 }
