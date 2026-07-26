@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -88,6 +89,26 @@ class HabitReminderMessageRepositoryTest {
     @Test
     void findByTelegramMessageIdReturnsEmptyWhenNoReminderMatches() {
         assertThat(habitReminderMessageRepository.findByTelegramMessageId(999L)).isEmpty();
+    }
+
+    @Test
+    void findsAllRemindersForAGivenReferenceDate() {
+        Habit water = habitRepository.save(Habit.builder()
+                .name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build());
+        Habit study = habitRepository.save(Habit.builder()
+                .name("Estudo").type(HabitType.CUMULATIVE).unit("min").target(180).build());
+
+        habitReminderMessageRepository.save(HabitReminderMessage.builder()
+                .habit(water).telegramMessageId(1001L).referenceDate(LocalDate.of(2026, 7, 26)).build());
+        habitReminderMessageRepository.save(HabitReminderMessage.builder()
+                .habit(study).telegramMessageId(1002L).referenceDate(LocalDate.of(2026, 7, 26)).build());
+        habitReminderMessageRepository.save(HabitReminderMessage.builder()
+                .habit(water).telegramMessageId(1003L).referenceDate(LocalDate.of(2026, 7, 27)).build());
+
+        List<HabitReminderMessage> found = habitReminderMessageRepository.findByReferenceDate(LocalDate.of(2026, 7, 26));
+
+        assertThat(found).extracting(HabitReminderMessage::getTelegramMessageId)
+                .containsExactlyInAnyOrder(1001L, 1002L);
     }
 
     @Test
