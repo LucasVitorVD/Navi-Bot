@@ -13,6 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.photo.PhotoSize;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -27,17 +28,20 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
     private final HabitQuantityInterpreter habitQuantityInterpreter;
     private final TelegramReplySender telegramReplySender;
     private final HabitRecordRepository habitRecordRepository;
+    private final Clock clock;
 
     public HabitReplyUpdateConsumer(HabitIdentificationService habitIdentificationService,
                                      TelegramUserResolver telegramUserResolver,
                                      HabitQuantityInterpreter habitQuantityInterpreter,
                                      TelegramReplySender telegramReplySender,
-                                     HabitRecordRepository habitRecordRepository) {
+                                     HabitRecordRepository habitRecordRepository,
+                                     Clock clock) {
         this.habitIdentificationService = habitIdentificationService;
         this.telegramUserResolver = telegramUserResolver;
         this.habitQuantityInterpreter = habitQuantityInterpreter;
         this.telegramReplySender = telegramReplySender;
         this.habitRecordRepository = habitRecordRepository;
+        this.clock = clock;
     }
 
     @Override
@@ -70,8 +74,8 @@ public class HabitReplyUpdateConsumer implements LongPollingSingleThreadUpdateCo
         habitRecordRepository.save(HabitRecord.builder()
                 .user(user)
                 .habit(resolvedHabit)
-                .referenceDate(LocalDate.now())
-                .createdAt(Instant.now())
+                .referenceDate(LocalDate.now(clock))
+                .createdAt(Instant.now(clock))
                 .captionText(message.getCaption())
                 .extractedQuantity(quantity)
                 .telegramPhotoFileId(largestPhoto(message.getPhoto()))

@@ -7,6 +7,7 @@ import com.project.navi.domain.User;
 import com.project.navi.quantity.HabitQuantityInterpreter;
 import com.project.navi.reminder.HabitIdentificationService;
 import com.project.navi.repository.HabitRecordRepository;
+import com.project.navi.time.AppZone;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -17,6 +18,9 @@ import org.telegram.telegrambots.meta.api.objects.chat.Chat;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.photo.PhotoSize;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,9 +53,13 @@ class HabitReplyUpdateConsumerTest {
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
     private final Habit goodFood = Habit.builder().id(4L).name("Alimentação boa").type(HabitType.BINARY).build();
 
+    // 2026-07-27T02:30:00Z == 2026-07-26T23:30:00 em América/São Paulo (UTC-3):
+    // prova que o cálculo do dia usa a zona correta, não o padrão do sistema (provavelmente UTC na VM).
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T02:30:00Z"), AppZone.ID);
+
     private HabitReplyUpdateConsumer consumer() {
         return new HabitReplyUpdateConsumer(habitIdentificationService, telegramUserResolver,
-                habitQuantityInterpreter, telegramReplySender, habitRecordRepository);
+                habitQuantityInterpreter, telegramReplySender, habitRecordRepository, clock);
     }
 
     private Update replyWithPhotoUpdate(long repliedToMessageId, long chatId, String caption) {
@@ -85,6 +93,8 @@ class HabitReplyUpdateConsumerTest {
         verify(habitRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getExtractedQuantity()).isNull();
         assertThat(captor.getValue().getHabit()).isEqualTo(goodFood);
+        assertThat(captor.getValue().getReferenceDate()).isEqualTo(LocalDate.of(2026, 7, 26));
+        assertThat(captor.getValue().getCreatedAt()).isEqualTo(Instant.parse("2026-07-27T02:30:00Z"));
 
         verify(habitQuantityInterpreter, never()).interpret(any(), any(), any());
         verify(telegramReplySender, never()).reply(any(), any(), any());
