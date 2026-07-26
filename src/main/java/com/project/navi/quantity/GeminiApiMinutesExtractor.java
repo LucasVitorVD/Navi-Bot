@@ -26,7 +26,7 @@ public class GeminiApiMinutesExtractor implements GeminiMinutesExtractor {
 
     public GeminiApiMinutesExtractor(RestClient.Builder restClientBuilder,
                                       @Value("${GEMINI_API_KEY:}") String apiKey,
-                                      @Value("${gemini.model:gemini-2.5-flash-lite}") String model) {
+                                      @Value("${gemini.model:gemini-2.5-flash}") String model) {
         this.restClient = restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
         this.apiKey = apiKey;
         this.model = model;
