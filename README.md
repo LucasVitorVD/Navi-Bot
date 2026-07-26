@@ -2,7 +2,7 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 3/8 — seed fixa dos hábitos (Água, Estudo, Cardio, Alimentação boa).
+**Status:** Etapa 4/8 — lógica de identificação do hábito a partir da mensagem respondida (reply), ainda sem integração real com Telegram.
 
 ## Rodando via Docker Compose
 
@@ -40,6 +40,10 @@ Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.pr
 ## Seed de hábitos (Etapa 3)
 
 `com.project.navi.seed.HabitSeeder` roda como `ApplicationRunner` no startup e popula a tabela `habits` com os 4 hábitos fixos, de forma idempotente (só insere se a tabela estiver vazia). Os nomes exibidos (`"Água"`, `"Estudo"`, `"Cardio"`, `"Alimentação boa"`) ficam em português, já que são conteúdo enviado ao grupo no Telegram — a regra de nomenclatura em inglês vale para tabelas/colunas/classes, não para dados de domínio voltados ao usuário.
+
+## Identificação do hábito por reply (Etapa 4)
+
+`com.project.navi.domain.HabitReminderMessage` guarda a relação entre o `telegram_message_id` do lembrete enviado (uma mensagem por hábito, às 07:30) e o `Habit` correspondente. `com.project.navi.reminder.HabitIdentificationService.identifyHabit(Long)` recebe o id da mensagem original respondida (`reply_to_message`) e resolve para o `Habit`, sem exigir comando ou formato rígido — retorna vazio se a reply não corresponder a nenhum lembrete conhecido. Testado de forma isolada (Mockito), sem integração real com Telegram (Etapa 5).
 
 ## Estrutura de pacotes prevista (próximas etapas)
 
