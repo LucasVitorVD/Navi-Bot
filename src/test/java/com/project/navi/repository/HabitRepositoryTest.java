@@ -50,4 +50,17 @@ class HabitRepositoryTest {
         assertThat(found.get().getUnit()).isNull();
         assertThat(found.get().getTarget()).isNull();
     }
+
+    @Test
+    void findsHabitByExactName() {
+        habitRepository.save(Habit.builder()
+                .name("Água")
+                .type(HabitType.CUMULATIVE)
+                .unit("ml")
+                .target(3000)
+                .build());
+
+        assertThat(habitRepository.findByName("Água")).isPresent();
+        assertThat(habitRepository.findByName("Cardio")).isEmpty();
+    }
 }
