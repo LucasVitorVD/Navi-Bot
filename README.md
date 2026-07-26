@@ -2,7 +2,7 @@
 
 Bot de hábitos via Telegram para um grupo fechado de amigos. Ver `especificacao-projeto.md` para o escopo completo.
 
-**Status:** Etapa 1/8 — estrutura base do projeto (Spring Boot + Docker), sem lógica de negócio.
+**Status:** Etapa 2/8 — entidades e repositórios (`User`, `Habit`, `UserHabitConfig`, `HabitRecord`) com testes de persistência.
 
 ## Rodando via Docker Compose
 
@@ -24,9 +24,21 @@ Requer Java 21.
 ./mvnw test
 ```
 
+## Modelo de dados (Etapa 2)
+
+Entidades em `com.project.navi.domain`, repositórios Spring Data JPA em `com.project.navi.repository`. Nomenclatura em inglês para uniformidade com o restante do código:
+
+| Entidade | Tabela | Equivalente na especificação |
+|---|---|---|
+| `User` | `users` | `usuario` |
+| `Habit` | `habits` | `habito` |
+| `UserHabitConfig` | `user_habit_configs` | `configuracao_usuario_habito` |
+| `HabitRecord` | `habit_records` | `registro` |
+
+`spring.jpa.hibernate.ddl-auto=update` cria/atualiza o schema automaticamente (o projeto ainda não usa ferramenta de migration como Flyway/Liquibase).
+
 ## Estrutura de pacotes prevista (próximas etapas)
 
-- `com.project.navi.domain` / `.repository` — Etapa 2
 - `com.project.navi.telegram` — Etapa 5
 - `com.project.navi.ai` — Etapa 6
 - `com.project.navi.scheduler` — Etapa 7
