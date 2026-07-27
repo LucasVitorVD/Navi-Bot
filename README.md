@@ -16,19 +16,28 @@ O `docker-compose.yml` sobe também um container [Dozzle](https://dozzle.dev/), 
 
 Acesse `http://localhost:8081` (por padrão só acessível pela própria máquina, via `127.0.0.1`). Para acessar remotamente, use um túnel SSH (`ssh -L 8081:localhost:8081 usuário@servidor`) em vez de expor a porta publicamente, já que o Dozzle não tem autenticação configurada.
 
-## Backup do banco e das fotos (Google Drive)
+## Backup do banco e das fotos (Backblaze B2)
 
 `scripts/backup.sh` tira um snapshot seguro do `data/navi.db` (via `sqlite3.Connection.backup()`,
 funciona mesmo com o app escrevendo ao mesmo tempo), empacota junto com `fotos/` num `.tar.gz`
-e manda pro Google Drive via [rclone](https://rclone.org/), podando backups (local e no Drive)
+e manda pro Backblaze B2 via [rclone](https://rclone.org/), podando backups (local e no B2)
 com mais de 14 dias.
+
+Backblaze B2 foi escolhido em vez do Google Drive por não exigir OAuth (tela de consentimento,
+escopos, publicação de app) — só uma Application Key, com tier grátis de 10GB de armazenamento
+e 1GB/dia de download.
 
 Configuração inicial (uma vez só, na máquina que for rodar o backup):
 
-1. Instale o `rclone` e rode `rclone config` para criar um remote chamado **`gdrive`** apontando
-   pra sua conta do Google Drive (o comando abre um fluxo de login no navegador).
-2. Teste manualmente: `./scripts/backup.sh`.
-3. Agende via cron pra rodar todo dia, por exemplo às 3h da manhã:
+1. Crie uma conta em [backblaze.com](https://www.backblaze.com/), um bucket **privado** e uma
+   Application Key com acesso restrito a esse bucket (Read and Write).
+2. Instale o `rclone` e rode, sem precisar de login interativo:
+   ```
+   rclone config create b2 b2 account=<keyID> key=<applicationKey>
+   ```
+3. Ajuste `RCLONE_REMOTE` em `scripts/backup.sh` para `b2:<nome-do-bucket>`.
+4. Teste manualmente: `./scripts/backup.sh`.
+5. Agende via cron pra rodar todo dia, por exemplo às 3h da manhã:
    ```
    0 3 * * * /caminho/completo/pra/navi/scripts/backup.sh >> /caminho/completo/pra/navi/backups/backup.log 2>&1
    ```
