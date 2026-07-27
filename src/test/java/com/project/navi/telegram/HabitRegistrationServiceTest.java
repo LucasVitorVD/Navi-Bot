@@ -69,7 +69,7 @@ class HabitRegistrationServiceTest {
     void registersBinaryHabitAndSendsConfirmation() {
         when(telegramUserResolver.resolve(sender)).thenReturn(user);
         when(photoStorage.download("file-id", today, 700L)).thenReturn(Optional.of("/app/fotos/2026-07-26/700.jpg"));
-        when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0))
+        when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0, true))
                 .thenReturn("Parabéns Lucas! Alimentação saudável registrado(a).");
 
         service().register(sender, goodFood, null, "file-id", 999L, 700L);
@@ -91,7 +91,7 @@ class HabitRegistrationServiceTest {
         when(telegramUserResolver.resolve(sender)).thenReturn(user);
         when(habitQuantityInterpreter.interpret(user, water, "bebi um copo")).thenReturn(Optional.of(500));
         when(habitProgressCalculator.remaining(user, water, today)).thenReturn(2500);
-        when(confirmationMessageFormatter.confirmationFor(user, water, 500, 2500))
+        when(confirmationMessageFormatter.confirmationFor(user, water, 500, 2500, true))
                 .thenReturn("Parabéns Lucas! Faltam 2500ml (~5 garrafas).");
 
         service().register(sender, water, "bebi um copo", "file-id", 999L, 700L);
@@ -114,6 +114,36 @@ class HabitRegistrationServiceTest {
         verify(habitRecordRepository, never()).save(any());
         verify(telegramReplySender).reply(999L, 700, "Configure sua garrafa");
         verify(photoStorage, never()).download(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void doesNotWarnAboutDailySummaryWhenRegisteredBeforeIt() {
+        Clock beforeSummary = Clock.fixed(Instant.parse("2026-07-26T20:00:00Z"), AppZone.ID); // 17:00 em Brasília
+        when(telegramUserResolver.resolve(sender)).thenReturn(user);
+        when(photoStorage.download(any(), any(), org.mockito.ArgumentMatchers.anyLong())).thenReturn(Optional.empty());
+        when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0, false))
+                .thenReturn("Parabéns Lucas! Alimentação saudável registrado(a).");
+
+        new HabitRegistrationService(telegramUserResolver, habitQuantityInterpreter, habitProgressCalculator,
+                confirmationMessageFormatter, telegramReplySender, habitRecordRepository, photoStorage, beforeSummary)
+                .register(sender, goodFood, null, "file-id", 999L, 700L);
+
+        verify(confirmationMessageFormatter).confirmationFor(user, goodFood, null, 0, false);
+    }
+
+    @Test
+    void warnsAboutDailySummaryWhenRegisteredAtOrAfterIt() {
+        Clock atSummaryTime = Clock.fixed(Instant.parse("2026-07-27T01:00:00Z"), AppZone.ID); // 22:00 em Brasília
+        when(telegramUserResolver.resolve(sender)).thenReturn(user);
+        when(photoStorage.download(any(), any(), org.mockito.ArgumentMatchers.anyLong())).thenReturn(Optional.empty());
+        when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0, true))
+                .thenReturn("Parabéns Lucas! Alimentação saudável registrado(a). ⚠️ Chegou depois do resumo.");
+
+        new HabitRegistrationService(telegramUserResolver, habitQuantityInterpreter, habitProgressCalculator,
+                confirmationMessageFormatter, telegramReplySender, habitRecordRepository, photoStorage, atSummaryTime)
+                .register(sender, goodFood, null, "file-id", 999L, 700L);
+
+        verify(confirmationMessageFormatter).confirmationFor(user, goodFood, null, 0, true);
     }
 
     @Test

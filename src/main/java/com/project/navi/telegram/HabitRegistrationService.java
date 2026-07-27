@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 
 /**
@@ -22,6 +23,8 @@ import java.util.Optional;
  */
 @Component
 public class HabitRegistrationService {
+
+    private static final LocalTime DAILY_SUMMARY_TIME = LocalTime.of(22, 0);
 
     private final TelegramUserResolver telegramUserResolver;
     private final HabitQuantityInterpreter habitQuantityInterpreter;
@@ -82,7 +85,8 @@ public class HabitRegistrationService {
         int remaining = habit.getType() == HabitType.CUMULATIVE
                 ? habitProgressCalculator.remaining(user, habit, referenceDate)
                 : 0;
+        boolean afterDailySummary = !LocalTime.now(clock).isBefore(DAILY_SUMMARY_TIME);
         telegramReplySender.reply(chatId, messageId.intValue(),
-                confirmationMessageFormatter.confirmationFor(user, habit, quantity, remaining));
+                confirmationMessageFormatter.confirmationFor(user, habit, quantity, remaining, afterDailySummary));
     }
 }

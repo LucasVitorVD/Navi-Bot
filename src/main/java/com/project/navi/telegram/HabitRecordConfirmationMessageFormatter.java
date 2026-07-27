@@ -17,10 +17,19 @@ public class HabitRecordConfirmationMessageFormatter {
             "Alimentação saudável", "🥗"
     );
 
-    public String confirmationFor(User user, Habit habit, Integer quantityJustAdded, int remaining) {
+    private static final String AFTER_DAILY_SUMMARY_WARNING =
+            " ⚠️ Chegou depois do resumo de hoje, então esse progresso não vai aparecer nele.";
+
+    public String confirmationFor(User user, Habit habit, Integer quantityJustAdded, int remaining,
+                                   boolean afterDailySummary) {
         String emoji = HABIT_EMOJIS.getOrDefault(habit.getName(), "✅");
         String greeting = "Parabéns " + user.getName() + "! " + emoji + " " + habit.getName() + " registrado(a).";
 
+        String message = buildMessage(greeting, habit, quantityJustAdded, remaining);
+        return afterDailySummary ? message + AFTER_DAILY_SUMMARY_WARNING : message;
+    }
+
+    private String buildMessage(String greeting, Habit habit, Integer quantityJustAdded, int remaining) {
         if (habit.getType() == HabitType.BINARY) {
             return greeting;
         }
