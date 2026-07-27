@@ -24,7 +24,7 @@ import java.util.Optional;
 @Component
 public class HabitRegistrationService {
 
-    private static final LocalTime DAILY_SUMMARY_TIME = LocalTime.of(22, 0);
+    private static final LocalTime DAILY_SUMMARY_TIME = LocalTime.of(23, 30);
 
     private final TelegramUserResolver telegramUserResolver;
     private final HabitQuantityInterpreter habitQuantityInterpreter;

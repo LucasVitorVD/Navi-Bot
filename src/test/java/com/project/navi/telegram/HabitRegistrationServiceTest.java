@@ -133,7 +133,7 @@ class HabitRegistrationServiceTest {
 
     @Test
     void warnsAboutDailySummaryWhenRegisteredAtOrAfterIt() {
-        Clock atSummaryTime = Clock.fixed(Instant.parse("2026-07-27T01:00:00Z"), AppZone.ID); // 22:00 em Brasília
+        Clock atSummaryTime = Clock.fixed(Instant.parse("2026-07-28T02:30:00Z"), AppZone.ID); // 23:30 em Brasília
         when(telegramUserResolver.resolve(sender)).thenReturn(user);
         when(photoStorage.download(any(), any(), org.mockito.ArgumentMatchers.anyLong())).thenReturn(Optional.empty());
         when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0, true))
