@@ -16,6 +16,23 @@ O `docker-compose.yml` sobe também um container [Dozzle](https://dozzle.dev/), 
 
 Acesse `http://localhost:8081` (por padrão só acessível pela própria máquina, via `127.0.0.1`). Para acessar remotamente, use um túnel SSH (`ssh -L 8081:localhost:8081 usuário@servidor`) em vez de expor a porta publicamente, já que o Dozzle não tem autenticação configurada.
 
+## Backup do banco e das fotos (Google Drive)
+
+`scripts/backup.sh` tira um snapshot seguro do `data/navi.db` (via `sqlite3.Connection.backup()`,
+funciona mesmo com o app escrevendo ao mesmo tempo), empacota junto com `fotos/` num `.tar.gz`
+e manda pro Google Drive via [rclone](https://rclone.org/), podando backups (local e no Drive)
+com mais de 14 dias.
+
+Configuração inicial (uma vez só, na máquina que for rodar o backup):
+
+1. Instale o `rclone` e rode `rclone config` para criar um remote chamado **`gdrive`** apontando
+   pra sua conta do Google Drive (o comando abre um fluxo de login no navegador).
+2. Teste manualmente: `./scripts/backup.sh`.
+3. Agende via cron pra rodar todo dia, por exemplo às 3h da manhã:
+   ```
+   0 3 * * * /caminho/completo/pra/navi/scripts/backup.sh >> /caminho/completo/pra/navi/backups/backup.log 2>&1
+   ```
+
 ## Rodando localmente sem Docker
 
 Requer Java 21.
