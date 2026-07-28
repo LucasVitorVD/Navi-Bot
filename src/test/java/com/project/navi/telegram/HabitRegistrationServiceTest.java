@@ -57,7 +57,7 @@ class HabitRegistrationServiceTest {
     private final Habit water = Habit.builder().id(1L).name("Água").type(HabitType.CUMULATIVE).unit("ml").target(3000).build();
     private final Habit goodFood = Habit.builder().id(4L).name("Alimentação saudável").type(HabitType.BINARY).build();
 
-    private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T02:30:00Z"), AppZone.ID);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-07-27T02:59:59Z"), AppZone.ID); // 23:59:59 em Brasília
     private final LocalDate today = LocalDate.of(2026, 7, 26);
 
     private HabitRegistrationService service() {
@@ -133,7 +133,7 @@ class HabitRegistrationServiceTest {
 
     @Test
     void warnsAboutDailySummaryWhenRegisteredAtOrAfterIt() {
-        Clock atSummaryTime = Clock.fixed(Instant.parse("2026-07-28T02:30:00Z"), AppZone.ID); // 23:30 em Brasília
+        Clock atSummaryTime = Clock.fixed(Instant.parse("2026-07-28T02:40:00Z"), AppZone.ID); // 23:40 em Brasília
         when(telegramUserResolver.resolve(sender)).thenReturn(user);
         when(photoStorage.download(any(), any(), org.mockito.ArgumentMatchers.anyLong())).thenReturn(Optional.empty());
         when(confirmationMessageFormatter.confirmationFor(user, goodFood, null, 0, true))

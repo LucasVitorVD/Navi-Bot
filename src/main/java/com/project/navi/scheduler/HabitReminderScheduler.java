@@ -105,7 +105,7 @@ public class HabitReminderScheduler {
         telegramReplySender.reply(chatId(), null, messageFormatter.reinforcementReminder(pending));
     }
 
-    @Scheduled(cron = "0 30 23 * * *", zone = "America/Sao_Paulo")
+    @Scheduled(cron = "0 40 23 * * *", zone = "America/Sao_Paulo")
     public void sendDailySummary() {
         if (groupChatId.isBlank()) {
             return;
